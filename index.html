@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mobile Gun Fight</title>
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    color: white;
+    font-family: Arial;
+}
+
+canvas {
+    display: block;
+}
+
+/* Mobile Controls */
+.controls {
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.btn {
+    width: 70px;
+    height: 70px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 70px;
+    font-size: 24px;
+    user-select: none;
+}
+
+.fire {
+    background: rgba(255,0,0,0.5);
+}
+
+.reload {
+    background: rgba(0,0,255,0.5);
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div class="controls">
+    <div>
+        <div class="btn" id="left">⬅️</div>
+        <div class="btn" id="right">➡️</div>
+    </div>
+    <div>
+        <div class="btn fire" id="fire">🔥</div>
+        <div class="btn reload" id="reload">🔄</div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Player
+const player = {
+    x: canvas.width / 2,
+    y: canvas.height - 100,
+    width: 40,
+    height: 40,
+    speed: 5
+};
+
+// Gun system
+let ammo = 10;
+const maxAmmo = 10;
+let reloading = false;
+
+// Bullets
+let bullets = [];
+
+// Enemies
+let enemies = [];
+let score = 0;
+
+// Controls state
+let moveLeft = false;
+let moveRight = false;
+
+// Touch controls
+document.getElementById("left").ontouchstart = () => moveLeft = true;
+document.getElementById("left").ontouchend = () => moveLeft = false;
+
+document.getElementById("right").ontouchstart = () => moveRight = true;
+document.getElementById("right").ontouchend = () => moveRight = false;
+
+document.getElementById("fire").ontouchstart = shoot;
+document.getElementById("reload").ontouchstart = reloadGun;
+
+// Keyboard fallback
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") moveLeft = true;
+    if (e.key === "ArrowRight") moveRight = true;
+    if (e.key === " ") shoot();
+    if (e.key === "r") reloadGun();
+});
+
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft") moveLeft = false;
+    if (e.key === "ArrowRight") moveRight = false;
+});
+
+// Shoot
+function shoot() {
+    if (ammo <= 0 || reloading) return;
+
+    bullets.push({
+        x: player.x + player.width/2 - 5,
+        y: player.y,
+        width: 10,
+        height: 20,
+        speed: 8
+    });
+
+    ammo--;
+}
+
+// Reload
+function reloadGun() {
+    if (reloading || ammo === maxAmmo) return;
+
+    reloading = true;
+
+    setTimeout(() => {
+        ammo = maxAmmo;
+        reloading = false;
+    }, 1500); // 1.5 sec reload
+}
+
+// Spawn enemies
+function spawnEnemy() {
+    enemies.push({
+        x: Math.random() * canvas.width,
+        y: -40,
+        width: 40,
+        height: 40,
+        speed: 2 + Math.random() * 2
+    });
+}
+setInterval(spawnEnemy, 1000);
+
+// Update
+function update() {
+    if (moveLeft && player.x > 0) player.x -= player.speed;
+    if (moveRight && player.x < canvas.width - player.width) player.x += player.speed;
+
+    bullets.forEach((b, i) => {
+        b.y -= b.speed;
+        if (b.y < 0) bullets.splice(i, 1);
+    });
+
+    enemies.forEach((e, ei) => {
+        e.y += e.speed;
+
+        bullets.forEach((b, bi) => {
+            if (
+                b.x < e.x + e.width &&
+                b.x + b.width > e.x &&
+                b.y < e.y + e.height &&
+                b.y + b.height > e.y
+            ) {
+                enemies.splice(ei, 1);
+                bullets.splice(bi, 1);
+                score++;
+            }
+        });
+
+        if (e.y > canvas.height) {
+            alert("Game Over! Score: " + score);
+            location.reload();
+        }
+    });
+}
+
+// Draw
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Player
+    ctx.fillStyle = "lime";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Bullets
+    ctx.fillStyle = "yellow";
+    bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+
+    // Enemies
+    ctx.fillStyle = "red";
+    enemies.forEach(e => ctx.fillRect(e.x, e.y, e.width, e.height));
+
+    // UI
+    ctx.fillStyle = "white";
+    ctx.fillText("Score: " + score, 20, 30);
+    ctx.fillText("Ammo: " + ammo + "/" + maxAmmo, 20, 60);
+    if (reloading) ctx.fillText("Reloading...", 20, 90);
+}
+
+// Loop
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+  </html>
